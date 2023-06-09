@@ -86,7 +86,10 @@ logging.basicConfig(filename='erro.log',
                     format='%(asctime)s - %(levelname)s - %(message)s'
                     )
 
-t2s = opencc.OpenCC('t2s')   
+t2s = opencc.OpenCC('t2s')
+
+def system_info(content):
+    info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + content + '\n')
 
 def upload_file():
     try:
@@ -95,9 +98,9 @@ def upload_file():
         wzname = os.path.basename(filename) 
         if not os.path.exists(kb_dir):  # 判断文件夹是否存在
             os.makedirs(kb_dir) 
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "本地目录创建成功" + '\n')
+            system_info("本地目录创建成功" )
         shutil.copy(filename, kb_dir)
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + filename + " 文件上传成功" + '\n')
+        system_info(filename + " 文件上传成功")
         with open (kb_dir+'/'+wzname, encoding='utf-8') as f:
             content_file = f.read()
 
@@ -115,10 +118,10 @@ def upload_file():
         vectorestore = Chroma (persist_directory = db_dir, 
                                 embedding_function=embeddings
                                 )
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "本地" + success + '\n')
+        system_info("本地" + success)
     except Exception as e:
         # 处理异常的代码
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "本地" + fail + '\n')
+        system_info("本地" + fail)
         logging.info(e)
 
 def create_wiki():
@@ -157,46 +160,46 @@ def create_wiki():
                                 embedding_function=embeddings
                                 )
             
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "维基“" + knowledge + "”" + success + '\n')
+            system_info("维基“" + knowledge + "”" + success)
             speech_synthesis_result = speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
             entry.delete(0, tk.END)   
         except Exception as e:
             # 处理异常的代码
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "维基" + fail + '\n')
+            system_info("维基" + fail)
             speech_synthesis_result = speech_synthesizer.speak_text_async(fail).get()
             logging.info(e)
     else:
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + insert_info + '\n')
+        system_info(insert_info)
     
 def ai_qa():
     try:        
         vectorestore = Chroma(persist_directory = db_dir, embedding_function=embeddings)
         
         chain = RetrievalQA.from_chain_type(llm=AzureOpenAI(model_kwargs={'engine': DEPLOYMENT_NAME}), 
-                                        retriever = vectorestore.as_retriever(search_kwargs={"k": 1}), 
+                                        retriever = vectorestore.as_retriever(search_kwargs={"k": 3}), 
                                         chain_type = "stuff"
                                         )
         
         speech_synthesis_result = speech_synthesizer.speak_text_async("请说出您的问题").get()
         speech_recognition_result = speech_recognizer.recognize_once_async().get()
         query = speech_recognition_result.text
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "语音问题：" + query + '\n')
+        system_info("语音问题：" + query )
         if query == "结束。":
             goodbye = "问答结束，齐风再见！"
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + goodbye + '\n')
+            system_info(goodbye)
             speech_synthesis_result = speech_synthesizer.speak_text_async(goodbye).get()
             exit(0)
         if query == "":
             goodbye = "没有收到问题，请尝试再问一次"
-            info_text.insert(tk.END,f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + goodbye + '\n')
+            system_info(goodbye)
             speech_synthesis_result = speech_synthesizer.speak_text_async(goodbye).get()
         else:
             speech = chain.run(query)
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "AI的回答是：" + speech + '\n')
+            system_info("AI的回答是：" + speech)
             speech_synthesis_result = speech_synthesizer.speak_text_async("AI的回答是："+speech).get()
     except Exception as e:
         # 处理异常的代码
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "系统异常，再试一次吧" + '\n')
+        system_info("系统异常，再试一次吧")
         speech_synthesis_result = speech_synthesizer.speak_text_async("系统异常，再试一次吧").get()
         logging.info(e)
 
@@ -207,23 +210,23 @@ def text_qa():
         try:
             vectorestore = Chroma(persist_directory = db_dir, embedding_function=embeddings)
             chain = RetrievalQA.from_chain_type(llm=AzureOpenAI(model_kwargs={'engine': DEPLOYMENT_NAME}), 
-                                            retriever = vectorestore.as_retriever(search_kwargs={"k": 1}), 
+                                            retriever = vectorestore.as_retriever(search_kwargs={"k": 3}), 
                                             chain_type = "stuff"
                                             ) 
-            info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "文本问题："+query+'\n')
+            system_info("文本问题："+query)
             if query == "结束":
                 goodbye = "问答结束，齐风再见！"
-                info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + goodbye + '\n')
+                system_info(goodbye)
                 exit(0)
             else:
                 speech = chain.run(query)
                 text_entry.delete(0, tk.END)
-                info_text.insert(tk.END,f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "AI的回答是："+ speech +'\n')
+                system_info("AI的回答是："+ speech)
         except Exception as e:
-            info_text.insert(tk.END,f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + "系统异常，再试一次吧" + '\n')
+            system_info("系统异常，再试一次吧")
             logging.info(e)
     else:
-        info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + insert_info + '\n')
+        system_info(insert_info)
 
 #用户界面布局
 root = tk.Tk()
