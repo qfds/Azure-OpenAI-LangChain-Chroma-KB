@@ -97,7 +97,7 @@ def split_file(filename, chunk_size):
             i=i+1
             collection.add(
                 documents=[chunks[i-1]],
-                metadatas=[{"genre": collection_name}],
+                metadatas=[{"genre": filename}],
                 ids=[collection_name+str(i)],)
     except Exception as e:
         system_info("数据插入异常，或数据已经存在，请确认后再试。")
