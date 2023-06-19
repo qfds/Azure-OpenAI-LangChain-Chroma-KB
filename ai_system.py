@@ -109,7 +109,7 @@ def get_result(query):
     search_res = collection.query(query_texts=[query],n_results=2)
     tempalte = "based on the context"+ str(search_res['documents'])+"the answer of"
     conversation.append({"role": "user", "content":tempalte+query})
-    response=openai.ChatCompletion.create( engine="gpt-35-turbo", messages=conversation)
+    response=openai.ChatCompletion.create( engine=GPT_NAME, messages=conversation)
     answer = response['choices'][0]['message']['content']
     return answer
 
