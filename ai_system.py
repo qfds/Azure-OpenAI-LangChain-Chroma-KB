@@ -94,16 +94,16 @@ def split_file(filename, chunk_size):
                 ids=[collection_name+str(i)],)
         return True
     except Exception as e:
-        system_info("数据插入异常，或数据已经存在，请确认后再试。")
+        system_info("数据插入异常或数据已经存在，请确认后再试。")
         logging.info(e)
 
 def get_result(query):
-    ai_info="You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
-    conversation=[{"role": "system", "content": ai_info}]
+    tempalte = "You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
     search_res = collection.query(query_texts=[query],n_results=2)
-    tempalte = "based on the context"+ str(search_res['documents'])+"the answer of"
-    conversation.append({"role": "user", "content":tempalte+query})
-    response=openai.ChatCompletion.create( engine=GPT_NAME, messages=conversation)
+    prompt = "based on the context"+str(search_res['documents'])+"the answer of"+query
+    conversation = [{"role": "system", "content": tempalte}]
+    conversation.append({"role": "user", "content": prompt})
+    response = openai.ChatCompletion.create(engine=GPT_NAME, messages=conversation, temperature=0.1)
     answer = response['choices'][0]['message']['content']
     return answer
 
