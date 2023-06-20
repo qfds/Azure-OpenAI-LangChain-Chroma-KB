@@ -77,12 +77,12 @@ def system_info(content):
     info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + content + '\n')
 
 def get_result(query):
-    ai_info = "You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
-    conversation = [{"role": "system", "content": ai_info}]
-    search_res = collection.query(query_texts=[query], n_results=2)
-    tempalte = "based on the context"+str(search_res['documents'])+"the answer of"
-    conversation.append({"role": "user", "content":tempalte+query})
-    response = openai.ChatCompletion.create(engine=GPT_NAME, messages=conversation)
+    tempalte = "You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
+    search_res = collection.query(query_texts=[query],n_results=2)
+    prompt = "based on the context"+str(search_res['documents'])+"the answer of"+query
+    conversation = [{"role": "system", "content": tempalte}]
+    conversation.append({"role": "user", "content": prompt})
+    response = openai.ChatCompletion.create(engine=GPT_NAME, messages=conversation, temperature=0.1)
     answer = response['choices'][0]['message']['content']
     return answer
 
