@@ -8,9 +8,9 @@ from tkinter import scrolledtext
 import tkinter as tk
 import azure.cognitiveservices.speech as speechsdk
 import chromadb
+import opencc
 import openai
 import re
-import opencc
 import configparser
 import wikipediaapi
 import logging
@@ -27,9 +27,9 @@ fail = "词条没有插入，请再试一次！"
 insert_info = "请输入内容后再操作！"
 
 font_style = ("微软雅黑", 9)
-tile_style = ("微软雅黑", 9,"bold")
-t2s = opencc.OpenCC('t2s')
+tile_style = ("微软雅黑", 9, "bold")
 
+t2s = opencc.OpenCC('t2s')
 config = configparser.ConfigParser()
 config.read(config_file)
 
@@ -47,8 +47,7 @@ SPEECH_KEY = config.get('Cognitive Services','SPEECH_KEY')
 SPEECH_REGION = config.get('Cognitive Services','SPEECH_REGION')
 
 #对语音服务进行配置
-speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, 
-                                       region=SPEECH_REGION)
+speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
 
 #文字转化为语音，或者将语音转化为文字.
 speech_config.speech_synthesis_voice_name='zh-CN-XiaoyouNeural'
@@ -56,13 +55,11 @@ speech_config.speech_recognition_language="zh-CN"
 
 #文字转语音服务
 audio_config_txt = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
-speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, 
-                                                 audio_config=audio_config_txt)
+speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config_txt)
 
 #语音识别并转换成文字
 audio_config_voice = speechsdk.audio.AudioConfig(use_default_microphone=True)
-speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, 
-                                               audio_config=audio_config_voice)
+speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config_voice)
 
 #对学习的文本进行切割及embedding
 open_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=openai.api_key,
@@ -72,13 +69,9 @@ open_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=openai.api_key,
 
 client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory="vs", anonymized_telemetry=False))
 
-collection = client.get_or_create_collection(name="collection", 
-                                             embedding_function=open_ef, 
-                                             metadata={"hnsw:space": "cosine"})
+collection = client.get_or_create_collection(name="collection", embedding_function=open_ef, metadata={"hnsw:space": "cosine"})
 
-logging.basicConfig(filename='error.log',
-                    level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='error.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def system_info(content):
     info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + content + '\n')
@@ -155,42 +148,42 @@ def create_wiki():
             back = split_file(wzname, chunk_size)
             if back:
                 system_info("维基“" + knowledge + "”" + success)
-                speech_synthesis_result = speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
+                speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
                 entry.delete(0, tk.END) 
             else:
                 system_info("维基" + fail)
-                speech_synthesis_result = speech_synthesizer.speak_text_async(fail).get()
+                speech_synthesizer.speak_text_async(fail).get()
         except Exception as e:
             # 处理异常的代码
             system_info("维基" + fail)
-            speech_synthesis_result = speech_synthesizer.speak_text_async(fail).get()
+            speech_synthesizer.speak_text_async(fail).get()
             logging.info(e)
     else:
         system_info(insert_info)
     
 def ai_qa():
     try:        
-        speech_synthesis_result = speech_synthesizer.speak_text_async("请说出您的问题").get()
+        speech_synthesizer.speak_text_async("请说出您的问题").get()
         speech_recognition_result = speech_recognizer.recognize_once_async().get()
         query = speech_recognition_result.text
-        system_info("语音问题：" + query )
+        system_info("语音问题：" + query)
         if query == "结束。":
             goodbye = "问答结束，齐风再见！"
             system_info(goodbye)
-            speech_synthesis_result = speech_synthesizer.speak_text_async(goodbye).get()
+            speech_synthesizer.speak_text_async(goodbye).get()
             exit(0)
         if query == "":
             goodbye = "没有收到问题，请尝试再问一次"
             system_info(goodbye)
-            speech_synthesis_result = speech_synthesizer.speak_text_async(goodbye).get()
+            speech_synthesizer.speak_text_async(goodbye).get()
         else:
             final = get_result(query)
             system_info("AI的回答是："+final)
-            speech_synthesis_result = speech_synthesizer.speak_text_async("AI的回答是："+final).get()
+            speech_synthesizer.speak_text_async("AI的回答是："+final).get()
     except Exception as e:
         # 处理异常的代码
         system_info("系统异常，再试一次吧")
-        speech_synthesis_result = speech_synthesizer.speak_text_async("系统异常，再试一次吧").get()
+        speech_synthesizer.speak_text_async("系统异常，再试一次吧").get()
         logging.info(e)
 
 def text_qa():
