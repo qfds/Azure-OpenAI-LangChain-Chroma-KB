@@ -89,7 +89,7 @@ def split_file(filename, chunk_size):
         chunks = []
         with open(kb_dir+'/'+filename, 'r', encoding='utf-8') as file:
             while True:
-                chunk = file.read(chunk_size)
+                chunk = t2s.convert(file.read(chunk_size))
                 if not chunk:
                     break
                 chunks.append(chunk)
@@ -99,6 +99,7 @@ def split_file(filename, chunk_size):
                 documents=[chunks[i-1]],
                 metadatas=[{"genre": filename}],
                 ids=[collection_name+str(i)],)
+        return True
     except Exception as e:
         system_info("数据插入异常，或数据已经存在，请确认后再试。")
         logging.info(e)
@@ -115,16 +116,19 @@ def get_result(query):
 
 def upload_file():
     try:
-        filetypes = [("Text files", "*.txt")]
-        filename = filedialog.askopenfilename(filetypes=filetypes)
+        file_types = [("Text files", "*.txt")]
+        filename = filedialog.askopenfilename(filetypes=file_types)
         wzname = os.path.basename(filename) 
         if not os.path.exists(kb_dir):  # 判断文件夹是否存在
             os.makedirs(kb_dir) 
             system_info("本地目录创建成功" )
         shutil.copy(filename, kb_dir)
-        system_info(filename + " 文件上传成功")
-        split_file(wzname, chunk_size)
-        system_info("本地" + success)
+        back = split_file(wzname, chunk_size) 
+        if back:
+            system_info(filename + " 文件上传成功")
+            system_info("本地" + success)
+        else:
+            system_info("本地" + fail)
     except Exception as e:
         # 处理异常的代码
         system_info("本地" + fail)
@@ -138,22 +142,24 @@ def create_wiki():
             wiki = wikipediaapi.Wikipedia('zh')
             # 选择要下载的维基百科页面
             page = wiki.page(knowledge)
-
             # 下载页面内容
             wikipage = t2s.convert(page.text)
             wzname = knowledge +".txt"
             file_name = kb_dir+'/'+ wzname
-
             # 将页面内容存储在文本文件中
             with open(file_name, 'w', encoding='utf-8') as f:
                 f.write(wikipage)
             with open(kb_name, 'w', encoding='utf-8') as f:
                 f.write(wikipage)
 
-            split_file(wzname, chunk_size)
-            system_info("维基“" + knowledge + "”" + success)
-            speech_synthesis_result = speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
-            entry.delete(0, tk.END) 
+            back = split_file(wzname, chunk_size)
+            if back:
+                system_info("维基“" + knowledge + "”" + success)
+                speech_synthesis_result = speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
+                entry.delete(0, tk.END) 
+            else:
+                system_info("维基" + fail)
+                speech_synthesis_result = speech_synthesizer.speak_text_async(fail).get()
         except Exception as e:
             # 处理异常的代码
             system_info("维基" + fail)
