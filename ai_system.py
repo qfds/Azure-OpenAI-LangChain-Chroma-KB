@@ -21,6 +21,9 @@ db_dir = 'vs'
 kb_dir = 'history'
 kb_name = 'wiki.txt'
 config_file = 'config.ini'
+def_color = 'black'
+query_color = '#000C7B'
+info_color = '#C00000'
 chunk_size = 1000
 success = "词条学习成功,可以开始问答啦！"
 fail = "词条没有插入，请再试一次！"
@@ -73,8 +76,9 @@ collection = client.get_or_create_collection(name="collection", embedding_functi
 
 logging.basicConfig(filename='error.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def system_info(content):
-    info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + content + '\n')
+def system_info(content, txt_color):
+    info_text.insert(tk.END, f"[{datetime.now().hour:02d}:{datetime.now().minute:02d}:{datetime.now().second:02d}] " + content + '\n',"tag%s" % txt_color)
+    info_text.tag_config("tag%s" % txt_color, foreground=txt_color)
 
 def split_file(filename, chunk_size):
     try:
@@ -94,7 +98,7 @@ def split_file(filename, chunk_size):
                 ids=[collection_name+str(i)],)
         return True
     except Exception as e:
-        system_info("数据插入异常或数据已经存在，请确认后再试。")
+        system_info("数据插入异常或数据已经存在，请确认后再试。",info_color)
         logging.info(e)
 
 def get_result(query):
@@ -114,17 +118,17 @@ def upload_file():
         wzname = os.path.basename(filename) 
         if not os.path.exists(kb_dir):  # 判断文件夹是否存在
             os.makedirs(kb_dir) 
-            system_info("本地目录创建成功" )
+            system_info("本地目录创建成功", def_color)
         shutil.copy(filename, kb_dir)
         back = split_file(wzname, chunk_size) 
         if back:
-            system_info(filename + " 文件上传成功")
-            system_info("本地" + success)
+            system_info(filename + " 文件上传成功", def_color)
+            system_info("本地" + success, def_color)
         else:
-            system_info("本地" + fail)
+            system_info("本地" + fail, info_color)
     except Exception as e:
         # 处理异常的代码
-        system_info("本地" + fail)
+        system_info("本地" + fail, info_color)
         logging.info(e)
 
 def create_wiki():
@@ -147,42 +151,42 @@ def create_wiki():
 
             back = split_file(wzname, chunk_size)
             if back:
-                system_info("维基“" + knowledge + "”" + success)
+                system_info("维基“" + knowledge + "”" + success, def_color)
                 speech_synthesizer.speak_text_async("维基百科的"+ knowledge + success).get()
                 entry.delete(0, tk.END) 
             else:
-                system_info("维基" + fail)
+                system_info("维基" + fail, def_color)
                 speech_synthesizer.speak_text_async(fail).get()
         except Exception as e:
             # 处理异常的代码
-            system_info("维基" + fail)
+            system_info("维基" + fail, def_color)
             speech_synthesizer.speak_text_async(fail).get()
             logging.info(e)
     else:
-        system_info(insert_info)
+        system_info(insert_info, info_color)
     
 def ai_qa():
     try:        
         speech_synthesizer.speak_text_async("请说出您的问题").get()
         speech_recognition_result = speech_recognizer.recognize_once_async().get()
         query = speech_recognition_result.text
-        system_info("语音问题：" + query)
+        system_info("语音问题：" + query, query_color)
         if query == "结束。":
             goodbye = "问答结束，齐风再见！"
-            system_info(goodbye)
+            system_info(goodbye, def_color)
             speech_synthesizer.speak_text_async(goodbye).get()
             exit(0)
         if query == "":
             goodbye = "没有收到问题，请尝试再问一次"
-            system_info(goodbye)
+            system_info(goodbye, def_color)
             speech_synthesizer.speak_text_async(goodbye).get()
         else:
             final = get_result(query)
-            system_info("AI的回答是："+final)
+            system_info("AI的回答是："+final, def_color)
             speech_synthesizer.speak_text_async("AI的回答是："+final).get()
     except Exception as e:
         # 处理异常的代码
-        system_info("系统异常，再试一次吧")
+        system_info("系统异常，再试一次吧", info_color)
         speech_synthesizer.speak_text_async("系统异常，再试一次吧").get()
         logging.info(e)
 
@@ -190,24 +194,24 @@ def text_qa():
     query = text_entry.get()
     if not query == "": 
         try:
-            system_info("文本问题："+query)
+            system_info("文本问题："+query, query_color)
             if query == "结束":
                 goodbye = "问答结束，齐风再见！"
-                system_info(goodbye)
+                system_info(goodbye, def_color)
                 exit(0)
             else:
                 final = get_result(query)
-                system_info("AI的回答是："+final)
+                system_info("AI的回答是："+final, def_color)
         except Exception as e:
-            system_info("系统异常，再试一次吧")
+            system_info("系统异常，再试一次吧", def_color)
             logging.info(e)
     else:
-        system_info(insert_info)
+        system_info(insert_info, info_color)
 
 #用户界面布局
 root = tk.Tk()
 
-root.title("Open AI本地知识库语音问答系统 v0.1")
+root.title("Open AI本地知识库语音问答系统 v0.2")
 root.iconbitmap("app.ico")
 root.geometry("600x405+100+100")
 root.resizable(False,False)
@@ -242,7 +246,7 @@ frame_ai.pack(side=tk.TOP, anchor=tk.N, fill=tk.BOTH, padx=10, pady=10)
 qa_label = tk.Label(frame_ai, text="点击按钮开始语音问答：")
 qa_label.pack(side="top", anchor=tk.W, padx=3, pady=5)
 
-aiqa = tk.Button(frame_ai, text="语音问答", bg="red", fg="white", command=ai_qa)
+aiqa = tk.Button(frame_ai, text="语音问答", bg=info_color, fg="white", command=ai_qa)
 aiqa.pack(side="top", anchor=tk.E, padx=3, pady=3)
 
 text_label = tk.Label(frame_ai, text="输入您的问题：")
@@ -259,9 +263,9 @@ frame_right = tk.Frame(root)
 frame_right.pack(side=tk.TOP, padx=5)
 
 info_label = tk.Label(frame_right, text="系统信息：", font=tile_style).pack(anchor=tk.W)
-user = tk.Label(frame_right, text="Created by Eric Qi @ 2023"+"\n"+"Powered by Open AI GPT3.5", fg="blue", font=("微软雅黑", 8)).pack(side="bottom", pady=3, anchor=tk.E)
+user = tk.Label(frame_right, text="Created by Eric Qi @ 2023"+"\n"+"Powered by Open AI GPT3.5", fg=query_color, font=("微软雅黑", 8)).pack(side="bottom", pady=3, anchor=tk.E)
 
-info_text = scrolledtext.ScrolledText(frame_right, font=font_style, bg='#F0F0F0', fg="#000C7B")
+info_text = scrolledtext.ScrolledText(frame_right, font=font_style, bg='#F0F0F0')
 info_text.pack(side=tk.LEFT, fill=tk.BOTH)
 
 root.mainloop()
