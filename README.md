@@ -55,7 +55,7 @@ pip install pyinstaller
    `azure`
    `lz4`
    `backoff`
-   `clickhouse_connect`
+   `clickhouse_connect`</br>
    以及以下文件到程序文件夹下：
    `monotonic.py`
    `hnswlib.cp310-win_amd64.py`
