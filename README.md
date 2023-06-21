@@ -22,7 +22,7 @@ B. 通过wikipedia的API接口获得指定词条的内容，用户可以输入�
 #### 4. AI问答：
 Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Promot Template）就可以发给Open AI 获得自己希望的答案了。
 #### 5. 语音问答：
-只是简单的调用了Azure的Cognitive Services （https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景
+只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景
 #### 6. 其他：
 程序只是自己在学习过程中写的一个简单的demo，有很多不足的地方，后续有时间也会考虑进一步完善
 
