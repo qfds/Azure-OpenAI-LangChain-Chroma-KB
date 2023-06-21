@@ -25,9 +25,10 @@ def_color = 'black'
 query_color = '#000C7B'
 info_color = '#C00000'
 chunk_size = 1000
+insert_info = "请输入内容后再操作！"
 success = "词条学习成功,可以开始问答啦！"
 fail = "词条没有插入，请再试一次！"
-insert_info = "请输入内容后再操作！"
+goodbye = "问答结束，齐风再见！"
 
 font_style = ("微软雅黑", 9)
 tile_style = ("微软雅黑", 9, "bold")
@@ -172,14 +173,13 @@ def ai_qa():
         query = speech_recognition_result.text
         system_info("语音问题：" + query, query_color)
         if query == "结束。":
-            goodbye = "问答结束，齐风再见！"
             system_info(goodbye, def_color)
             speech_synthesizer.speak_text_async(goodbye).get()
             exit(0)
         if query == "":
-            goodbye = "没有收到问题，请尝试再问一次"
-            system_info(goodbye, def_color)
-            speech_synthesizer.speak_text_async(goodbye).get()
+            blank_info = "没有收到问题，请尝试再问一次"
+            system_info(blank_info, def_color)
+            speech_synthesizer.speak_text_async(blank_info).get()
         else:
             final = get_result(query)
             system_info("AI的回答是："+final, def_color)
@@ -196,11 +196,11 @@ def text_qa():
         try:
             system_info("文本问题："+query, query_color)
             if query == "结束":
-                goodbye = "问答结束，齐风再见！"
                 system_info(goodbye, def_color)
                 exit(0)
             else:
                 final = get_result(query)
+                text_entry.delete(0, tk.END)
                 system_info("AI的回答是："+final, def_color)
         except Exception as e:
             system_info("系统异常，再试一次吧", def_color)
