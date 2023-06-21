@@ -23,7 +23,19 @@ B. 通过wikipedia的API接口获得指定词条的内容，用户可以输入�
 Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Promot Template）就可以发给Open AI 获得自己希望的答案了。
 #### 5. 语音问答：
 只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景
-#### 6. 其他：
+#### 6.Python依赖环境配置
+```python
+pip install azure-cognitiveservices-speech
+pip install openai
+pip install chromadb
+pip install wikipedia-api
+pip install Pillow
+pip install opencc
+pip install unidecode
+# install Pyinstaller when you need to compile Windows application
+pip install pyinstaller
+```
+#### 7. 其他：
 程序只是自己在学习过程中写的一个简单的demo，有很多不足的地方，后续有时间也会考虑进一步完善
 
 ## 版本记录
@@ -32,6 +44,31 @@ Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接�
 2. 提供客户端版本，不支持文本数据导入，但可以通过替换数据库文件实现检索，更适合分发部署使用
 3. 对UI界面进行小的调整，将问题，回答以及提示信息按不同颜色显示
 4. 其它微小改动
-<div align=center><img src="https://raw.githubusercontent.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/main/img/v0.2ss.png">
-  <p>v0.2界面展示</p>
-</div>
+5. 对客户端文件进行编译，执行此命令：<br/>
+   `pyinstaller -i app.ico -w -D ai_client.py`<br/>
+   单独拷贝'Lib\site-packages'文件夹到程序文件夹下：
+   `onnxruntime`
+   `posthog`
+   `tqdm`
+   `tokenizers`
+   `chromadb`
+   `azure`
+   `lz4`
+   `backoff`
+   `clickhouse_connect`
+   以及以下文件到程序文件夹下：
+   `monotonic.py`
+   `hnswlib.cp310-win_amd64.py`
+   `duckdb.cp310-win_amd64.py`
+   `config.ini`
+   `app.ico`
+   `logo.png`<br/>
+   点击**ai_client.exe**即可运行客户端
+
+> v0.2客户端界面展示
+
+![](https://raw.githubusercontent.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/main/img/client.png)
+
+> v0.2系统界面展示
+
+![](https://raw.githubusercontent.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/main/img/v0.2ss.png)
