@@ -34,7 +34,7 @@ config = configparser.ConfigParser()
 config.read(config_file)
 
 openai.api_type = "azure"
-openai.api_version = "2023-03-15-preview"
+openai.api_version = config.get('Azure OpenAI','OPENAI_API_VER')
 openai.api_base = config.get('Azure OpenAI','OPENAI_API_BASE')
 openai.api_key = config.get('Azure OpenAI','OPENAI_API_KEY')
 
