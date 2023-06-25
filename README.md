@@ -20,7 +20,7 @@ B. 通过wikipedia的API接口获得指定词条的内容，用户可以输入�
 #### 3. 向量数据库的选择：
 可以用作AI使用的Vectorstore 有很多选择，Chroma比较轻量，部署也相对容易，将处理后的文档插入ChromaDB后，就可以作为后续AI本地知识库问答的数据源了
 #### 4. AI问答：
-Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Promot Template）就可以发给Open AI 获得自己希望的答案了。
+Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Prompt Template）就可以发给Open AI 获得自己希望的答案了。
 #### 5. 语音问答：
 只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景
 #### 6.Python依赖环境配置
