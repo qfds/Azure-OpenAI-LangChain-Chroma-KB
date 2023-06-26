@@ -67,7 +67,7 @@ open_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=openai.api_key,
                                                       api_type=openai.api_type,
                                                       model_name=TEXT_EMBED_MOD)
 
-client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory="vs", anonymized_telemetry=False))
+client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=db_dir, anonymized_telemetry=False))
 
 collection = client.get_or_create_collection(name="collection", 
                                              embedding_function=open_ef, 
