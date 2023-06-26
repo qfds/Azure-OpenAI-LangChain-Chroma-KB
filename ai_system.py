@@ -10,11 +10,11 @@ import azure.cognitiveservices.speech as speechsdk
 import chromadb
 import opencc
 import openai
-import re
 import configparser
 import wikipediaapi
 import logging
 import shutil
+import re
 import os
 
 db_dir = 'vs'
@@ -86,11 +86,20 @@ def split_file(filename, chunk_size):
         collection_name = re.sub(r"\s", "", unidecode(os.path.splitext(filename)[0]))
         chunks = []
         with open(kb_dir+'/'+filename, 'r', encoding='utf-8') as file:
-            while True:
-                chunk = t2s.convert(file.read(chunk_size))
-                if not chunk:
-                    break
-                chunks.append(chunk)
+            content = t2s.convert(file.read())
+            article = re.sub(r'\s+', ' ', content).strip()
+            sentences = re.findall(r'[^。！？]+[。！？]+', article)
+            if not sentences:
+                sentences = [article]
+            current_line = ''
+            for sentence in sentences:
+                if len(current_line) + len(sentence) <= chunk_size:
+                    current_line += sentence
+                else:
+                    chunks.append(current_line)
+                    current_line = sentence
+            if current_line:
+                chunks.append(current_line)
         for i in range(len(chunks)): 
             i=i+1
             collection.add(
@@ -104,7 +113,7 @@ def split_file(filename, chunk_size):
 
 def get_result(query):
     tempalte = "You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
-    search_res = collection.query(query_texts=[query],n_results=2)
+    search_res = collection.query(query_texts=[query],n_results=3)
     prompt = "based on the context"+str(search_res['documents'])+"the answer of"+query
     conversation = [{"role": "system", "content": tempalte}]
     conversation.append({"role": "user", "content": prompt})
@@ -149,7 +158,6 @@ def create_wiki():
                 f.write(wikipage)
             with open(kb_name, 'w', encoding='utf-8') as f:
                 f.write(wikipage)
-
             back = split_file(wzname, chunk_size)
             if back:
                 system_info("维基“" + knowledge + "”" + success, def_color)
