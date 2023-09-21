@@ -22,8 +22,10 @@ B. 通过wikipedia的API接口获得指定词条的内容，用户可以输入�
 #### 4. AI问答：
 Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Prompt Template）就可以发给Open AI 获得自己希望的答案了。
 #### 5. 语音问答：
-只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景
-#### 6.Python依赖环境配置
+只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景。
+#### 6. 数据库的导出与导入：
+为了更好地控制数据库的权限和对客户端的分发，将学习权限只限于服务端，客户端只能导入已经学习好的服务器数据库文件，方法为：进入服务端目录下的"vs"目录，选中所有文件，用压缩软件（如winzip or 7zip）压缩成vs.zip文件，此文件包含所有已学习的词条及内容，将此zip文件在客户端界面导入后即可完成学习。
+#### 7. Python依赖环境配置
 ```python
 pip install azure-cognitiveservices-speech
 pip install openai
@@ -35,7 +37,7 @@ pip install unidecode
 # install Pyinstaller when you need to compile Windows application
 pip install pyinstaller
 ```
-#### 7. 其他：
+#### 8. 其他：
 程序只是自己在学习过程中写的一个简单的demo，有很多不足的地方，后续有时间也会考虑进一步完善
 
 ## 版本记录
