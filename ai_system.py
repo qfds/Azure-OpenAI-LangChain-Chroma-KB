@@ -87,7 +87,7 @@ def split_file(filename, chunk_size):
         chunks = []
         with open(kb_dir+'/'+filename, 'r', encoding='utf-8') as file:
             content = t2s.convert(file.read())
-            article = re.sub(r'\s+', ' ', content).strip()
+            article = re.sub(r'\s+', ' ', content+"。").strip()
             sentences = re.findall(r'[^。！？]+[。！？]+', article)
             if not sentences:
                 sentences = [article]
@@ -114,7 +114,7 @@ def split_file(filename, chunk_size):
 def get_result(query):
     tempalte = "You should answer the question based on the given context, if no context is found, answer I don't know. The answer should be in Chinese"
     search_res = collection.query(query_texts=[query],n_results=3)
-    prompt = "based on the context"+str(search_res['documents'])+"the answer of"+query
+    prompt = "based on the given context, context:"+str(search_res['documents'])+"the answer of"+query
     conversation = [{"role": "system", "content": tempalte}]
     conversation.append({"role": "user", "content": prompt})
     response = openai.ChatCompletion.create(engine=GPT_NAME, messages=conversation, temperature=0.1)
@@ -144,7 +144,7 @@ def upload_file():
 def create_wiki():
     # 获取文本输入框的内容
     knowledge = entry.get()
-    if not knowledge == "": 
+    if not knowledge == "":
         try:
             wiki = wikipediaapi.Wikipedia('zh')
             # 选择要下载的维基百科页面
