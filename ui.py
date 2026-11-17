@@ -7,6 +7,7 @@
 """
 
 import os
+import re
 import threading
 import tkinter as tk
 from tkinter import filedialog
@@ -392,8 +393,13 @@ class KBApp(ctk.CTk):
             self.history.append(("user", question))
             self.history.append(("assistant", answer))
             self.history = self.history[-12:]
+            # 来源只在气泡下方单独显示一次（按词条合并段号），不写进正文
+            grouped = {}
+            for h in good:
+                grouped.setdefault(h["source"], []).append(h["chunk"] + 1)
             source = "来源：" + "、".join(
-                f"{h['source']} 第 {h['chunk'] + 1} 段" for h in good
+                f"{name} 第 {'、'.join(str(c) for c in sorted(set(chunks)))} 段"
+                for name, chunks in grouped.items()
             )
             self.after(0, lambda: (
                 self.add_bubble(answer, "ai", source=source),
@@ -416,10 +422,14 @@ class KBApp(ctk.CTk):
         不碰 busy 状态（调用方自己管），这样手动朗读时界面不用锁死。
         状态栏会写明本次用的输出设备名，方便定位“没声音”是设备问题
         还是合成问题。
+        朗读时去掉来源标注（正文里残留的“（来源：…）”），只读回答本身，
+        不然一句话没说完就插一段来源，听着断断续续。
         """
         try:
             self.after(0, lambda: self.set_status("正在合成语音…"))
-            pcm = self.gemini.synthesize_speech(text)
+            speak_text = re.sub(r"[（(]来源：[^）)]*[）)]", "", text)
+            speak_text = re.sub(r"\n\s*\n+", "\n", speak_text).strip()
+            pcm = self.gemini.synthesize_speech(speak_text)
             dev = voice_mod.default_output_device_name()
             dev_note = f"（输出设备：{dev}）" if dev else ""
             self.after(0, lambda: self.set_status(f"正在朗读…{dev_note}"))
