@@ -12,7 +12,20 @@ import tkinter as tk
 from tkinter import filedialog
 
 import customtkinter as ctk
-import opencc
+
+try:
+    import opencc
+    t2s = opencc.OpenCC("t2s")
+except Exception:
+    # OpenCC 的编译组件（opencc_clib）在 PyInstaller 打包时容易漏掉，
+    # 缺失时退化为不做繁转简，程序仍能正常运行。
+    opencc = None
+
+    class _IdentityConverter:
+        def convert(self, text):
+            return text
+
+    t2s = _IdentityConverter()
 
 import config_manager as cm
 from chunker import normalize_source_name, split_text
@@ -23,8 +36,6 @@ import voice as voice_mod
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
-
-t2s = opencc.OpenCC("t2s")
 
 UNKNOWN_ANSWER = "知识库中没有找到相关内容，我不知道。"
 
