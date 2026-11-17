@@ -110,9 +110,6 @@ pyinstaller --noconfirm --clean --onedir --windowed --name "KB-QA-v2" ^
 ## 安全说明
 
 - 任何真实 key 只存在于本机 `config.ini` 或环境变量，绝不进代码和仓库。
-- v0.2 的 `config.ini` 里曾提交过一个真实 Azure OpenAI key（2023 年），
-  2.0 已将其从代码库删除；请务必去 Azure Portal 把那个 key 轮换作废，
-  因为删除文件清不掉 git 历史里的旧值。
 - 语音在后台线程跑，界面不会卡住；异常会显示具体原因，不再只有一句“系统异常”。
 
 ## 版本记录
