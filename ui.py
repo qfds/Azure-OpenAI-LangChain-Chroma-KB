@@ -104,6 +104,7 @@ class KBApp(ctk.CTk):
         self.kb = None
         self.history = []          # [(role, text)]，role: user/assistant
         self.last_answer = ""      # 最近一次 AI 回答（供手动“朗读”用）
+        self._rec_stop = None      # 按住录音的停止信号（threading.Event）
         self.busy = False
         self.read_var = ctk.BooleanVar(value=False)
 
@@ -174,8 +175,12 @@ class KBApp(ctk.CTk):
         self.ask_btn.pack(side="left", padx=(0, 8))
         self.voice_btn = ctk.CTkButton(bottom, text="语音问答", width=90, height=38,
                                        fg_color="#C0392B", hover_color="#D84A35",
-                                       font=("微软雅黑", 12), command=self._on_voice_ask)
+                                       font=("微软雅黑", 12))
         self.voice_btn.pack(side="left")
+        # 按住说话：按下开始录音，松开停止。CTkButton.bind 已重写为
+        # 绑在内部 canvas / 文字标签上，一次调用就覆盖全部可点区域。
+        self.voice_btn.bind("<ButtonPress-1>", self._on_voice_press, add=True)
+        self.voice_btn.bind("<ButtonRelease-1>", self._on_voice_release, add=True)
         self.read_btn = ctk.CTkButton(bottom, text="朗读", width=64, height=38,
                                       fg_color="#2B7CB8", hover_color="#3590CF",
                                       font=("微软雅黑", 12), command=self._on_read_aloud)
@@ -225,10 +230,13 @@ class KBApp(ctk.CTk):
     def set_status(self, text: str):
         self.status_label.configure(text=text)
 
-    def _set_busy(self, busy: bool):
+    def _set_busy(self, busy: bool, keep_voice: bool = False):
         self.busy = busy
         state = "disabled" if busy else "normal"
-        for btn in (self.learn_btn, self.upload_btn, self.ask_btn, self.voice_btn):
+        btns = (self.learn_btn, self.upload_btn, self.ask_btn)
+        if not keep_voice:
+            btns = btns + (self.voice_btn,)
+        for btn in btns:
             btn.configure(state=state)
 
     def _scroll_chat_bottom(self):
@@ -406,13 +414,17 @@ class KBApp(ctk.CTk):
         """合成 + 播放；每一步都在状态栏报进度，失败在对话框里报清原因。
 
         不碰 busy 状态（调用方自己管），这样手动朗读时界面不用锁死。
+        状态栏会写明本次用的输出设备名，方便定位“没声音”是设备问题
+        还是合成问题。
         """
         try:
             self.after(0, lambda: self.set_status("正在合成语音…"))
             pcm = self.gemini.synthesize_speech(text)
-            self.after(0, lambda: self.set_status("正在朗读…"))
+            dev = voice_mod.default_output_device_name()
+            dev_note = f"（输出设备：{dev}）" if dev else ""
+            self.after(0, lambda: self.set_status(f"正在朗读…{dev_note}"))
             voice_mod.play_pcm(pcm)
-            self.after(0, lambda: self.set_status("朗读完成"))
+            self.after(0, lambda: self.set_status(f"朗读完成{dev_note}"))
         except Exception as exc:
             self.after(0, lambda e=exc: (
                 self.add_bubble(f"朗读失败：{e}", "system"),
@@ -428,20 +440,38 @@ class KBApp(ctk.CTk):
             return
         self._run_thread(self._speak_worker, self.last_answer)
 
-    # ---------- 语音问答 ----------
-    def _on_voice_ask(self):
+    # ---------- 语音问答（按住说话，松开结束）----------
+    def _on_voice_press(self, event=None):
+        """按下语音按钮：开始录音。"""
         if self.busy or not self._need_backend():
             return
-        self._set_busy(True)
-        self.voice_btn.configure(text="● 录音中…")
-        self.add_bubble("🎤 正在录音，请说话…\n说完停顿 2 秒自动结束，最长 20 秒。",
-                        "system")
-        self.set_status("正在录音，请说话…")
-        self._run_thread(self._voice_worker)
-
-    def _voice_worker(self):
+        self._rec_stop = threading.Event()
+        self._set_busy(True, keep_voice=True)
+        self.voice_btn.configure(text="● 录音中，松开结束")
+        self.add_bubble("🎤 正在录音，请说话…\n松开按钮结束，最长 20 秒。", "system")
+        self.set_status("正在录音，松开按钮结束…")
         try:
-            wav = voice_mod.record_until_silence()
+            self.voice_btn.grab_set()
+        except Exception:
+            pass
+        self._run_thread(self._voice_worker, self._rec_stop)
+
+    def _on_voice_release(self, event=None):
+        """松开语音按钮：停止录音。"""
+        if getattr(self, "_rec_stop", None) is None:
+            return
+        self._rec_stop.set()
+        self._release_voice_grab()
+
+    def _release_voice_grab(self):
+        try:
+            self.voice_btn.grab_release()
+        except Exception:
+            pass
+
+    def _voice_worker(self, stop_event):
+        try:
+            wav = voice_mod.record_until_stop(stop_event)
             self.after(0, lambda: (
                 self.voice_btn.configure(text="语音问答"),
                 self.set_status("正在识别语音…"),
@@ -457,3 +487,6 @@ class KBApp(ctk.CTk):
                 self.set_status(f"语音问答失败：{e}"),
                 self._set_busy(False),
             ))
+        finally:
+            self._rec_stop = None
+            self.after(0, self._release_voice_grab)

@@ -112,12 +112,19 @@ class GeminiClient:
                 ),
             ),
         )
-        try:
-            part = resp.candidates[0].content.parts[0]
-            data = part.inline_data.data
-        except (AttributeError, IndexError, TypeError) as exc:
-            raise RuntimeError("语音合成没有返回音频数据") from exc
-        if isinstance(data, str):
-            import base64
-            data = base64.b64decode(data)
-        return bytes(data)
+        # 音频可能分在多个 part 里（长回答时），全部拼起来，不要只取第一个
+        audio_chunks = []
+        for cand in resp.candidates or []:
+            content = getattr(cand, "content", None)
+            for part in (getattr(content, "parts", None) or []):
+                inline = getattr(part, "inline_data", None)
+                if inline is None or not inline.data:
+                    continue
+                data = inline.data
+                if isinstance(data, str):
+                    import base64
+                    data = base64.b64decode(data)
+                audio_chunks.append(bytes(data))
+        if not audio_chunks:
+            raise RuntimeError("语音合成没有返回音频数据")
+        return b"".join(audio_chunks)

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """录音与放音：sounddevice + numpy + 标准库 wave。
 
-录音带静音检测：开始后最长录 20 秒，连续 2 秒静音即停。
+录音是按住说话（push-to-talk）：调用方在按下按钮时创建 stop_event，
+松开按钮时 set()，录到松开或最长 MAX_SECONDS 即停。
 放音：播放 Gemini TTS 返回的 16-bit PCM（24kHz 单声道）。
 本模块不做网络调用；转写/合成在 gemini_client 里。
 """
@@ -18,8 +19,29 @@ except Exception:  # 无音频设备或 PortAudio 缺失时，导入也不应炸
     sd = None
 
 SAMPLE_RATE = 16000          # 录音采样率（转写够用）
-MAX_SECONDS = 20.0           # 单次录音最长
-SILENCE_SECONDS = 2.0        # 连续静音即停（说中文时句间停顿常见，1.2 秒太容易断）
+MAX_SECONDS = 20.0           # 单次录音最长（按住不松开的安全上限）
+SILENCE_RMS = 0.01           # 判断“听到声音”的阈值（RMS）
+TTS_SAMPLE_RATE = 24000      # Gemini TTS 输出采样率
+
+_play_lock = threading.Lock()
+
+
+def audio_available() -> bool:
+    return sd is not None
+
+
+def default_output_device_name() -> str:
+    """默认音频输出设备名；拿不到时返回空字符串。"""
+    if sd is None:
+        return ""
+    try:
+        devices = sd.query_devices()
+        _in_idx, out_idx = sd.default.device
+        if isinstance(out_idx, int) and 0 <= out_idx < len(devices):
+            return str(devices[out_idx].get("name", ""))
+        return str(out_idx or "")
+    except Exception:
+        return ""
 SILENCE_RMS = 0.01           # 静音阈值（RMS）
 TTS_SAMPLE_RATE = 24000      # Gemini TTS 输出采样率
 
@@ -30,8 +52,12 @@ def audio_available() -> bool:
     return sd is not None
 
 
-def record_until_silence() -> bytes:
-    """录一段语音，返回 WAV 字节；没麦克风/没声音时抛 RuntimeError。"""
+def record_until_stop(stop_event: threading.Event) -> bytes:
+    """按住录音：调用方按下按钮时创建 stop_event，松开按钮时 set()。
+
+    录到 stop_event 被 set 或最长 MAX_SECONDS 即停；没听到声音时抛
+    RuntimeError。开始后先等 0.1 秒让输入流真正跑起来再判断。
+    """
     if sd is None:
         raise RuntimeError("本机没有可用的音频设备（sounddevice 初始化失败）")
     try:
@@ -42,23 +68,18 @@ def record_until_silence() -> bytes:
         raise RuntimeError("没有检测到麦克风输入设备")
 
     frames = []
-    silent_chunks = 0
     chunk_seconds = 0.1
     chunk_samples = int(SAMPLE_RATE * chunk_seconds)
-    max_silent_chunks = int(SILENCE_SECONDS / chunk_seconds)
     max_chunks = int(MAX_SECONDS / chunk_seconds)
     heard_voice = False
 
     def callback(indata, _frames, _time, status):
-        nonlocal silent_chunks, heard_voice
+        nonlocal heard_voice
         data = np.frombuffer(indata, dtype=np.float32).copy()
         frames.append(data)
         rms = float(np.sqrt(np.mean(data ** 2))) if data.size else 0.0
         if rms > SILENCE_RMS:
             heard_voice = True
-            silent_chunks = 0
-        elif heard_voice:
-            silent_chunks += 1
 
     try:
         with sd.InputStream(samplerate=SAMPLE_RATE, channels=1,
@@ -67,17 +88,17 @@ def record_until_silence() -> bytes:
             import time
             waited = 0.0
             while waited < MAX_SECONDS:
+                if stop_event.is_set():
+                    break
                 time.sleep(chunk_seconds)
                 waited += chunk_seconds
-                if heard_voice and silent_chunks >= max_silent_chunks:
-                    break
                 if len(frames) >= max_chunks:
                     break
     except Exception as exc:
         raise RuntimeError(f"录音失败：{exc}") from exc
 
     if not heard_voice or not frames:
-        raise RuntimeError("没有听到声音，请靠近麦克风再试一次")
+        raise RuntimeError("没有听到声音，请按住按钮靠近麦克风再试一次")
     audio = np.concatenate(frames).astype(np.float32)
     pcm16 = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
     buf = io.BytesIO()
