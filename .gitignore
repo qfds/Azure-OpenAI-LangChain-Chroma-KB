@@ -1,0 +1,17 @@
+# secrets & local config - never commit real keys
+config.ini
+.env
+
+# generated vector database (rebuild with one click in the app)
+vs/
+
+# runtime logs and caches
+error.log
+__pycache__/
+*.pyc
+
+# PyInstaller build output
+dist/
+build/
+*.spec
+*.egg-info/
