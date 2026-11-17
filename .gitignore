@@ -4,6 +4,7 @@ config.ini
 
 # generated vector database (rebuild with one click in the app)
 vs/
+vs.bak-*/
 
 # runtime logs and caches
 error.log

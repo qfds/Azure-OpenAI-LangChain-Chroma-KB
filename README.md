@@ -1,76 +1,125 @@
-# Azure-OpenAI-LangChain-Chroma-KB
-## 介绍
-这个是我第一个AI的小demo项目，主要目的是：让AI对维基百科上面的一些指定词条或者本地的文本知识库进行学习，然后通过语音或者文字的方式向AI进行提问。
-程序用Pyhton开发，调用Azure的OpenAI接口并使用tkinter编写的GUI界面，运行后是一个window程序，如下所示：
+# 本地知识库问答 v2.0
 
-<div align=center><img src="https://github.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/blob/main/img/screenshot.png">
-  <p>程序界面展示</p>
-</div>
+2023 年写的第一个 AI 小项目，用 vibe coding 的方式整个重写了一遍。
+对维基百科词条或本地文本做学习，建成 Chroma 本地向量库，
+然后用文字或语音向 AI 提问，回答只依据知识库内容，并注明出处。
 
-## 程序说明
-<div align=center><img src="https://github.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/blob/main/img/diagram.png">
-  <p>程序流程图</p>
-</div>
+## 功能
 
-#### 1. 知识库的建立方式有两种：
-A. 上传本地的文本文件，目前只支持*.txt 文件格式；</BR>
-B. 通过wikipedia的API接口获得指定词条的内容，用户可以输入词条的名称，程序会通过API接口爬取词条内容，然后存储为本地文本文件（大陆境内需要有扶墙环境）
-#### 2. 文本文件的分割处理：
-由于GPT的embedding接口有tokens 限制，所以需要将文本切割成符合处理要求的大小，进而形成一个文档数组
-#### 3. 向量数据库的选择：
-可以用作AI使用的Vectorstore 有很多选择，Chroma比较轻量，部署也相对容易，将处理后的文档插入ChromaDB后，就可以作为后续AI本地知识库问答的数据源了
-#### 4. AI问答：
-Azure Open AI提供非常简洁的API调用，可以比较轻松的实现API接口的AI问答，针对本地知识库的问答核心就是先基于用户问题在Vectorstore中找到相关的文本内容，这部分内容将作为AI回答用户问题的提示内容，再将文本内容和用户问题一起加入提示词模板（Prompt Template）就可以发给Open AI 获得自己希望的答案了。
-#### 5. 语音问答：
-只是简单的调用了Azure的Cognitive Services（https://learn.microsoft.com/zh-cn/azure/cognitive-services/speech-service/ ）本质上还是基于文本内容的问答，语音问答在部分场景可以解决输入的问，更贴近一些真实的AI 使用场景。
-#### 6. 数据库的导出与导入：
-为了更好地控制数据库的权限和对客户端的分发，将学习权限只限于服务端，客户端只能导入已经学习好的服务器数据库文件，方法为：进入服务端目录下的"vs"目录，选中所有文件，用压缩软件（如winzip or 7zip）压缩成vs.zip文件，此文件包含所有已学习的词条及内容，将此zip文件在客户端界面导入后即可完成学习。
-#### 7. Python依赖环境配置
-```python
-pip install azure-cognitiveservices-speech
-pip install openai
-pip install chromadb
-pip install wikipedia-api
-pip install Pillow
-pip install opencc
-pip install unidecode
-# install Pyinstaller when you need to compile Windows application
-pip install pyinstaller
+- **知识学习**：输入中文维基词条自动抓取并学习；或上传本地 `.txt` 文件学习
+- **向量知识库**：Chroma 本地存储，按句切块（约 1000 字，带 200 字重叠），每段记录来源词条与段号
+- **文字问答**：先在向量库里找最相关的 3 段，再连同问题发给模型；库里没有相关内容就直接回答“我不知道”，不编造
+- **语音问答**：对着麦克风说话，Gemini 转写后自动提问；回答可一键朗读
+- **连续对话**：同一会话内保留最近 3 轮对话，可追问
+- **带引用的回答**：每条回答下方标注来源，如“来源：海豹科 第 3 段”
+
+## 快速开始
+
+需要 Python 3.12 和一个 Gemini API key（去 Google AI Studio 申请）。
+
+```bash
+pip install -r requirements.txt
+python main.py
 ```
-#### 8. 其他：
-程序只是自己在学习过程中写的一个简单的demo，有很多不足的地方，后续有时间也会考虑进一步完善
+
+首次运行会弹出设置框，填写 Gemini API key 后即可使用。
+key 只保存在本机 `config.ini`，也可以用环境变量 `GEMINI_API_KEY` 代替；
+`config.ini` 已加入 `.gitignore`，不会被提交到仓库。
+
+也可以先复制模板再填：
+
+```bash
+cp config.example.ini config.ini
+```
+
+## 使用方法
+
+1. 左侧输入维基词条（如“海豹科”），点“学习词条”；或点“上传本地 TXT 文件”
+2. 学完后在右侧输入问题，点“发送”；或点“语音问答”直接说话
+3. 打开“朗读回答”开关，回答生成后会自动朗读
+4. 顶部“设置”可以改模型、取回段数和相似度阈值
+
+注意：大陆访问中文维基百科需要可用的网络环境；词条不存在时会明确提示。
+
+## 模型（2026-11-17 实测）
+
+| 用途 | 模型 | 说明 |
+| --- | --- | --- |
+| 问答 | gemini-3.8-flash | 原计划的 gemini-2.5-flash 已不对新用户开放，API 建议用 3.8-flash |
+| 向量 | gemini-embedding-001 | 原计划的 text-embedding-004 已下线，由 gemini-embedding-001 接替 |
+| 语音合成 | gemini-3.8-flash-tts | TTS 只在 v1beta 提供，客户端固定走 v1beta |
+| 语音转写 | gemini-3.8-flash（音频输入） | 录音经 Gemini 直接转写为文字 |
+
+模型名都可以在设置里改。向量与 embedding 模型绑定：换向量模型后，
+程序会把旧向量库自动备份为 `vs.bak-时间戳`，并重建空库，需重新学习词条。
+
+## 工作原理
+
+```
+维基词条 / 本地 txt
+  → 繁转简 → 按句切块（1000 字/段，200 字重叠）
+  → Gemini 向量 → Chroma 本地库（vs/）
+用户提问 → 向量检索 top 3（余弦距离 <= 0.45 才算相关）
+  → 相关片段 + 问题 + 对话历史 → Gemini 回答（带引用）
+  → 无相关片段 → 直接回答“我不知道”
+```
+
+## 项目结构
+
+```
+main.py              程序入口
+ui.py                CustomTkinter 界面（浅色主题，1080x660）
+gemini_client.py     Gemini 对话 / 向量 / 转写 / 合成
+kb_store.py          Chroma 本地向量库封装
+chunker.py           按句切块
+wiki_client.py       中文维基百科抓取
+voice.py             录音（静音检测）与放音
+config_manager.py    config.ini 读写
+config.example.ini   配置模板（空占位）
+requirements.txt     依赖（已钉版本）
+.github/workflows/   GitHub Actions：Windows 自动打包
+legacy/v0.1-v0.2/    2023 年的老版本代码（仅作参考）
+history/             示例知识库文本（马、猫、牛、奥迪）
+wiki.txt             示例知识库文本（海豹科）
+```
+
+## 打包 Windows exe
+
+### 方法一：GitHub Actions（推荐）
+
+推到 `v2.0-rewrite` 或 `main` 分支后自动打包，
+在 Actions 页面下载 `KB-QA-v2-windows`（内含 `KB-QA-v2.exe`）。
+也可以在 Actions 页点 Run workflow 手动触发。
+工作流文件见 `.github/workflows/build-windows.yml`，
+全程不含任何 key。
+
+### 方法二：本地打包（需要一台 Windows）
+
+```bash
+pip install -r requirements.txt
+pip install pyinstaller
+pyinstaller --noconfirm --clean --onedir --windowed --name "KB-QA-v2" ^
+  --icon app.ico --add-data "logo.png;." --add-data "config.example.ini;." ^
+  --add-data "README.md;." --collect-all chromadb --collect-all onnxruntime ^
+  --collect-all sounddevice main.py
+```
+
+打包完成后在 `dist\KB-QA-v2\KB-QA-v2.exe` 运行，
+首次运行在设置里填 Gemini API key 即可。
+
+## 安全说明
+
+- 任何真实 key 只存在于本机 `config.ini` 或环境变量，绝不进代码和仓库。
+- v0.2 的 `config.ini` 里曾提交过一个真实 Azure OpenAI key（2023 年），
+  2.0 已将其从代码库删除；请务必去 Azure Portal 把那个 key 轮换作废，
+  因为删除文件清不掉 git 历史里的旧值。
+- 语音在后台线程跑，界面不会卡住；异常会显示具体原因，不再只有一句“系统异常”。
 
 ## 版本记录
-#### v0.2 改动包括：
-1. 不再使用LangChain框架去实现问答功能，改为直接对Chroma数据库进行搜索，并直接调用OpenAI接口进行KB问答
-2. 提供客户端版本，不支持文本数据导入，但可以通过替换数据库文件实现检索，更适合分发部署使用
-3. 对UI界面进行小的调整，将问题，回答以及提示信息按不同颜色显示
-4. 其它微小改动
-5. 对客户端文件进行编译，执行此命令：<br/>
-   `pyinstaller -i app.ico -w -D ai_client.py`<br/>
-   单独拷贝'Lib\site-packages'文件夹到程序文件夹下：
-   `onnxruntime`
-   `posthog`
-   `tqdm`
-   `tokenizers`
-   `chromadb`
-   `azure`
-   `lz4`
-   `backoff`
-   `clickhouse_connect`</br>
-   以及以下文件到程序文件夹下：
-   `monotonic.py`
-   `hnswlib.cp310-win_amd64.py`
-   `duckdb.cp310-win_amd64.py`
-   `config.ini`
-   `app.ico`
-   `logo.png`<br/>
-   点击**ai_client.exe**即可运行客户端
 
-> v0.2客户端界面展示
-
-![](https://raw.githubusercontent.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/main/img/client.png)
-
-> v0.2系统界面展示
-
-![](https://raw.githubusercontent.com/qfds/Azure-OpenAI-LangChain-Chroma-KB/main/img/v0.2ss.png)
+- **v2.0（2026-11-17）**：vibe coding 全面重写。模型全切 Gemini；
+  系统版与客户端版合并为一个程序；模块化拆分；界面改为 CustomTkinter 浅色主题；
+  新增引用来源、答不出就说不知道、连续对话、后台线程、具体报错；
+  旧向量库不兼容，需重新学习。
+- **v0.2**：去掉 LangChain，直接调 Chroma + OpenAI；提供客户端版（导入预建数据库 zip）。
+- **v0.1**：初版，LangChain RetrievalQA + Azure OpenAI GPT-3.5 + Azure 语音。
