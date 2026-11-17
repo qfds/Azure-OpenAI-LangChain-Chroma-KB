@@ -48,7 +48,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.parent = parent
         self.cfg = cfg
         self.title("设置")
-        self.geometry("480x560")
+        self.geometry("480x720")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
