@@ -1,0 +1,37 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [v2.0-rewrite, main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Smoke test imports
+        run: python -c "import main, ui, config_manager, chunker, wiki_client, gemini_client, kb_store, voice; print('imports ok')"
+
+      - name: Build exe with PyInstaller
+        run: |
+          pyinstaller --noconfirm --clean --onedir --windowed --name "KB-QA-v2" --icon app.ico --add-data "logo.png;." --add-data "config.example.ini;." --add-data "README.md;." --collect-all chromadb --collect-all onnxruntime --collect-all sounddevice main.py
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KB-QA-v2-windows
+          path: dist/KB-QA-v2
