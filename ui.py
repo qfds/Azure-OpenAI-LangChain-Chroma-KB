@@ -103,6 +103,7 @@ class KBApp(ctk.CTk):
         self.gemini = None
         self.kb = None
         self.history = []          # [(role, text)]，role: user/assistant
+        self.last_answer = ""      # 最近一次 AI 回答（供手动“朗读”用）
         self.busy = False
         self.read_var = ctk.BooleanVar(value=False)
 
@@ -175,6 +176,10 @@ class KBApp(ctk.CTk):
                                        fg_color="#C0392B", hover_color="#D84A35",
                                        font=("微软雅黑", 12), command=self._on_voice_ask)
         self.voice_btn.pack(side="left")
+        self.read_btn = ctk.CTkButton(bottom, text="朗读", width=64, height=38,
+                                      fg_color="#2B7CB8", hover_color="#3590CF",
+                                      font=("微软雅黑", 12), command=self._on_read_aloud)
+        self.read_btn.pack(side="left", padx=(8, 0))
         ctk.CTkLabel(bottom, text="朗读回答", font=("微软雅黑", 11)).pack(side="left", padx=(10, 2))
         ctk.CTkSwitch(bottom, text="", variable=self.read_var, width=40).pack(side="left")
 
@@ -353,12 +358,14 @@ class KBApp(ctk.CTk):
         self._ask(question)
 
     def _ask(self, question: str):
+        # 开关状态在主线程读（tkinter 变量不要跨线程读），再传给后台线程
+        read_aloud = self.read_var.get()
         self._set_busy(True)
         self.add_bubble(question, "user")
         self.set_status("正在检索知识库…")
-        self._run_thread(self._ask_worker, question)
+        self._run_thread(self._ask_worker, question, read_aloud)
 
-    def _ask_worker(self, question: str):
+    def _ask_worker(self, question: str, read_aloud: bool = False):
         try:
             top_k = cm.get_int(self.cfg, "Knowledge", "TOP_K")
             threshold = cm.get_float(self.cfg, "Knowledge", "DISTANCE_THRESHOLD")
@@ -373,6 +380,7 @@ class KBApp(ctk.CTk):
                 return
             self.after(0, lambda: self.set_status("正在生成回答…"))
             answer = self.gemini.chat(question, good, history=self.history)
+            self.last_answer = answer
             self.history.append(("user", question))
             self.history.append(("assistant", answer))
             self.history = self.history[-12:]
@@ -385,7 +393,7 @@ class KBApp(ctk.CTk):
                                 f"向量库 {self.kb.count()} 段"),
                 self._set_busy(False),
             ))
-            if self.read_var.get():
+            if read_aloud:
                 self._run_thread(self._speak_worker, answer)
         except Exception as exc:
             self.after(0, lambda e=exc: (
@@ -395,34 +403,57 @@ class KBApp(ctk.CTk):
             ))
 
     def _speak_worker(self, text: str):
+        """合成 + 播放；每一步都在状态栏报进度，失败在对话框里报清原因。
+
+        不碰 busy 状态（调用方自己管），这样手动朗读时界面不用锁死。
+        """
         try:
+            self.after(0, lambda: self.set_status("正在合成语音…"))
             pcm = self.gemini.synthesize_speech(text)
+            self.after(0, lambda: self.set_status("正在朗读…"))
             voice_mod.play_pcm(pcm)
+            self.after(0, lambda: self.set_status("朗读完成"))
         except Exception as exc:
-            self.after(0, lambda e=exc: self.set_status(f"朗读失败：{e}"))
+            self.after(0, lambda e=exc: (
+                self.add_bubble(f"朗读失败：{e}", "system"),
+                self.set_status(f"朗读失败：{e}"),
+            ))
+
+    def _on_read_aloud(self):
+        """手动朗读最近一次 AI 回答（不受“朗读回答”开关影响）。"""
+        if not self._need_backend():
+            return
+        if not self.last_answer:
+            self.add_bubble("还没有可以朗读的回答，先问一个问题吧。", "system")
+            return
+        self._run_thread(self._speak_worker, self.last_answer)
 
     # ---------- 语音问答 ----------
     def _on_voice_ask(self):
         if self.busy or not self._need_backend():
             return
         self._set_busy(True)
-        self.set_status("请说出您的问题（最长 10 秒，说完停顿即结束）…")
+        self.voice_btn.configure(text="● 录音中…")
+        self.add_bubble("🎤 正在录音，请说话…\n说完停顿 2 秒自动结束，最长 20 秒。",
+                        "system")
+        self.set_status("正在录音，请说话…")
         self._run_thread(self._voice_worker)
 
     def _voice_worker(self):
         try:
             wav = voice_mod.record_until_silence()
-            self.after(0, lambda: self.set_status("正在识别语音…"))
+            self.after(0, lambda: (
+                self.voice_btn.configure(text="语音问答"),
+                self.set_status("正在识别语音…"),
+            ))
             text = self.gemini.transcribe_audio(wav)
             if not text:
                 raise RuntimeError("没有识别到语音内容，请再试一次")
             self.after(0, lambda: self._ask(text))
         except Exception as exc:
             self.after(0, lambda e=exc: (
+                self.voice_btn.configure(text="语音问答"),
                 self.add_bubble(f"语音问答失败：{e}", "system"),
                 self.set_status(f"语音问答失败：{e}"),
                 self._set_busy(False),
             ))
-        finally:
-            # _ask() 成功时会自己接管 busy；识别失败时这里已在 except 里释放
-            pass
