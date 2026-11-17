@@ -28,7 +28,7 @@ jobs:
 
       - name: Build exe with PyInstaller
         run: |
-          pyinstaller --noconfirm --clean --onedir --windowed --name "KB-QA-v2" --icon app.ico --add-data "logo.png;." --add-data "config.example.ini;." --add-data "README.md;." --collect-all chromadb --collect-all onnxruntime --collect-all sounddevice main.py
+          pyinstaller --noconfirm --clean --onedir --windowed --name "KB-QA-v2" --icon app.ico --add-data "logo.png;." --add-data "config.example.ini;." --add-data "README.md;." --collect-all chromadb --collect-all onnxruntime --collect-all sounddevice --collect-all opencc main.py
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
